@@ -1,0 +1,291 @@
+
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulateur iPhone – Test local</title>
+<style>
+  :root {
+    --device-w: 390px;  /* iPhone 12/13/14 */
+    --device-h: 844px;
+    --frame-bg: #0b1220;
+    --ui-bg: #0f172a;
+    --ui-fg: #e2e8f0;
+    --accent: #3b82f6;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      linear-gradient(0deg, rgba(255,255,255,0.02) 1px, transparent 1px) 0 0 / 24px 24px,
+      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px) 0 0 / 24px 24px,
+      #0a0f1a;
+    color: var(--ui-fg);
+    font: 14px/1.3 system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+    display: grid;
+    grid-template-rows: auto 1fr;
+  }
+
+  /* Top controls */
+  .toolbar {
+    display: grid;
+    grid-template-columns: 1fr auto auto auto auto auto;
+    gap: 8px;
+    padding: 10px;
+    background: var(--ui-bg);
+    border-bottom: 1px solid #1f2937;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+  }
+  .toolbar .title {
+    font-weight: 700;
+    letter-spacing: .2px;
+  }
+  .toolbar select, .toolbar input[type="text"], .toolbar button {
+    background: #0b1220;
+    color: var(--ui-fg);
+    border: 1px solid #334155;
+    border-radius: 10px;
+    height: 36px;
+    padding: 0 10px;
+    outline: none;
+  }
+  .toolbar input[type="text"] { width: 280px; }
+  .toolbar button {
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .toolbar button.primary {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: white;
+  }
+  .toolbar .hint {
+    opacity: .8;
+    font-size: 12px;
+    grid-column: 1 / -1;
+  }
+
+  /* Stage */
+  .stage {
+    display: grid;
+    place-items: center;
+    padding: 16px;
+  }
+  .device-wrap {
+    background: radial-gradient(1200px 400px at 50% -200px, #1d283a, transparent 70%);
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    overflow: auto;
+  }
+  .device {
+    position: relative;
+    width: var(--device-w);
+    height: var(--device-h);
+    border-radius: 38px;
+    background: var(--frame-bg);
+    border: 1px solid #243047;
+    box-shadow:
+      0 30px 60px rgba(0,0,0,.45),
+      0 12px 24px rgba(0,0,0,.35),
+      inset 0 0 0 6px #0c1220;
+    display: grid;
+    grid-template-rows: 28px 1fr 18px; /* status bar / screen / home bar */
+    transform-origin: top left;
+  }
+  /* Notch */
+  .notch {
+    height: 28px;
+    display: grid;
+    place-items: center;
+    position: relative;
+  }
+  .notch::before {
+    content: "";
+    position: absolute;
+    width: 200px; height: 22px;
+    background: #0b1220;
+    top: 3px; left: 50%;
+    transform: translateX(-50%);
+    border-bottom-left-radius: 14px;
+    border-bottom-right-radius: 14px;
+    border: 1px solid #1e293b;
+    border-top: 0;
+  }
+  /* Screen */
+  .screen {
+    overflow: hidden;
+    border-radius: 26px;
+    margin: 0 8px;
+    background: #0b1220;
+    display: grid;
+  }
+  .screen iframe {
+    width: 100%;
+    height: 100%;
+    border: 0;
+    background: #0b1220;
+  }
+  /* Home bar */
+  .homebar {
+    display: grid;
+    place-items: center;
+  }
+  .homebar::before {
+    content: "";
+    display: block;
+    width: 120px; height: 4px;
+    background: #1f2b42;
+    border-radius: 4px;
+  }
+
+  /* Status strip */
+  .status {
+    position: absolute;
+    top: 6px; left: 12px; right: 12px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    opacity: .7;
+    pointer-events: none;
+  }
+  .status .pill { background: rgba(255,255,255,.05); padding: 2px 6px; border-radius: 999px; }
+
+  /* Scale container */
+  .fit-wrap {
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+  }
+
+  @media (max-width: 900px) {
+    .toolbar input[type="text"] { width: 180px; }
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <div class="title">📱 Simulateur iPhone (local)</div>
+
+    <select id="device">
+      <option value="375x667">iPhone SE (375×667)</option>
+      <option value="390x844" selected>iPhone 12/13/14 (390×844)</option>
+      <option value="393x852">iPhone 14/15 Pro (393×852)</option>
+      <option value="430x932">iPhone 15 Pro Max (430×932)</option>
+      <option value="428x926">iPhone 14/15 Plus (428×926)</option>
+    </select>
+
+    <select id="scale">
+      <option value="fit" selected>Adapter à la fenêtre</option>
+      <option value="1">Échelle 1×</option>
+      <option value="0.85">0.85×</option>
+      <option value="0.75">0.75×</option>
+      <option value="0.6">0.60×</option>
+      <option value="0.5">0.50×</option>
+    </select>
+
+    <button id="rotate">↻ Rotation</button>
+
+    <input id="url" type="text" placeholder="index_qwerty_compact.html ou index.html">
+    <button id="load" class="primary">Charger</button>
+
+    <div class="hint">Astuce : place ce fichier **dans le même dossier** que ton jeu, puis tape le nom du fichier (ex. <code>index_qwerty_compact.html</code>) et clique sur Charger.</div>
+  </div>
+
+  <div class="stage">
+    <div class="device-wrap">
+      <div class="fit-wrap">
+        <div class="device" id="device">
+          <div class="notch">
+            <div class="status">
+              <div class="pill">9:41</div>
+              <div class="pill">LTE • 100%</div>
+            </div>
+          </div>
+          <div class="screen">
+            <iframe id="preview" src="about:blank" title="Aperçu"></iframe>
+          </div>
+          <div class="homebar"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(function(){
+  const deviceSel = document.querySelector('select#device');
+  const scaleSel  = document.querySelector('select#scale');
+  const rotateBtn = document.getElementById('rotate');
+  const urlInput  = document.getElementById('url');
+  const loadBtn   = document.getElementById('load');
+  const deviceEl  = document.querySelector('.device');
+  const iframe    = document.getElementById('preview');
+
+  let landscape = false;
+
+  function setDeviceSize(w, h){
+    document.documentElement.style.setProperty('--device-w', w + 'px');
+    document.documentElement.style.setProperty('--device-h', h + 'px');
+  }
+
+  function applySizeFromSelect(){
+    const [w,h] = deviceSel.value.split('x').map(Number);
+    const dw = landscape ? h : w;
+    const dh = landscape ? w : h;
+    setDeviceSize(dw, dh);
+    fitScale();
+  }
+
+  function fitScale(){
+    const fit = scaleSel.value === 'fit';
+    const stage = document.querySelector('.device-wrap');
+    const rect = stage.getBoundingClientRect();
+    const w = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--device-w'));
+    const h = parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--device-h'));
+    let scale = 1;
+    if (fit) {
+      scale = Math.min((rect.width - 24) / w, (rect.height - 24) / h);
+      scale = Math.max(0.3, Math.min(scale, 1)); // clamp
+    } else {
+      scale = parseFloat(scaleSel.value);
+    }
+    deviceEl.style.transform = 'scale(' + scale + ')';
+  }
+
+  function loadURL(){
+    const u = (urlInput.value || '').trim() || 'index_qwerty_compact.html';
+    try {
+      iframe.src = u;
+    } catch(e){
+      alert('Impossible de charger: ' + u + '\\n' + e.message);
+    }
+  }
+
+  deviceSel.addEventListener('change', applySizeFromSelect);
+  scaleSel.addEventListener('change', fitScale);
+  rotateBtn.addEventListener('click', function(){
+    landscape = !landscape;
+    applySizeFromSelect();
+  });
+  window.addEventListener('resize', fitScale);
+  loadBtn.addEventListener('click', loadURL);
+
+  // Auto: essayer index_qwerty_compact.html puis index.html au 1er clic si vide
+  iframe.addEventListener('error', function(){
+    // no-op (certain navigateurs ne lancent pas 'error' sur iframe)
+  });
+
+  // Init
+  applySizeFromSelect();
+  // Petite aide : si la page courante est dans le même dossier que ton jeu,
+  // tape juste le nom du fichier (ex: index.html) et clique sur Charger.
+})();
+</script>
+</body>
+</html>

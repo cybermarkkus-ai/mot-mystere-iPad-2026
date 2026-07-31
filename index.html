@@ -1,0 +1,506 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+  <title>Mot Mystère</title>
+  <style>
+    :root{
+      --cols: 5;
+      --gap: 6px;
+      --sidepad: 12px;
+      --tile-max: 64px;
+      --tile: clamp(42px, calc((100vw - (2 * var(--sidepad)) - (var(--cols) - 1) * var(--gap)) / var(--cols)), var(--tile-max));
+      
+      /* --- PALETTE DE COULEURS (Vert / Rouge / Gris) --- */
+      --bg: #0b1220; --fg: #ffffff; --panel: rgba(15,23,42,0.85); --panel-border: rgba(255,255,255,0.08);
+      
+      /* Tuiles de base */
+      --tile-border: #4b6ea8; --tile-bg-top: #1a2b4d; --tile-bg-bot: #2a4175; --tile-text: #ffffff;
+      
+      /* 1. ABSENT (Gris) */
+      --tile-absent-bg: #0e1a30; --tile-absent-border: #5b6f8a; --tile-absent-text: #a9bdd6;
+      
+      /* 2. MAL PLACÉ (Rouge - Comme le bouton Effacer) */
+      --tile-present-top: #ef4444; --tile-present-bot: #b91c1c; --tile-present-border: #f87171; --tile-present-text: #ffffff;
+      
+      /* 3. BIEN PLACÉ (Vert - Classique) */
+      --tile-correct-top: #22c55e; --tile-correct-bot: #15803d; --tile-correct-border: #4ade80; --tile-correct-text: #ffffff;
+      
+      /* Clavier */
+      --key-bg: #1e293b; --key-border: #263041; --key-text: #ffffff; 
+      --key-greyed-bg: #0b1220; --key-greyed-border: #475569; --key-greyed-text: rgba(159,179,200,0.5);
+      --toast-bg: rgba(0,0,0,0.75);
+    }
+
+    @media (min-width: 768px){ :root{ --tile-max: 64px; }}
+
+    /* Thème Clair adapté (Vert/Rouge) */
+    .theme-light-soft{ 
+      --bg:#eceff3; --fg:#141824; 
+      --panel:rgba(255,255,255,0.8); --panel-border:rgba(0,0,0,0.06); 
+      --tile-border:rgba(0,0,0,0.10); --tile-bg-top:rgba(0,0,0,0.05); --tile-bg-bot:rgba(0,0,0,0.03); --tile-text:#141824; 
+      --tile-absent-bg:#e6e9ef; --tile-absent-border:#c8ced9; --tile-absent-text:#6b7280; 
+      
+      /* Rouge */
+      --tile-present-top:#ef4444; --tile-present-bot:#dc2626; --tile-present-border:#ef4444; --tile-present-text:#ffffff; 
+      /* Vert */
+      --tile-correct-top:#4ade80; --tile-correct-bot:#22c55e; --tile-correct-border:#22c55e; --tile-correct-text:#064e3b; 
+      
+      --key-bg:#e6e9ef; --key-border:rgba(0,0,0,0.08); --key-text:#141824; 
+      --key-greyed-bg:#dfe3ea; --key-greyed-border:rgba(0,0,0,0.08); --key-greyed-text:#9aa3ad; 
+      --toast-bg:rgba(0,0,0,0.65); 
+    }
+
+    *{ box-sizing:border-box }
+    html, body{ height:100%; margin:0 }
+    body{ font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background: var(--bg); color: var(--fg); -webkit-text-size-adjust:100%; touch-action: manipulation; transition: background .3s ease, color .3s ease; }
+    .app{ min-height:100dvh; display:flex; flex-direction:column; gap:12px; padding:12px; }
+    header{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; }
+    header .left, header .right{ display:flex; gap:8px; align-items:center; }
+    header .center{ justify-self:center; font-weight:900; text-align:center; text-transform:uppercase; letter-spacing:.06em; font-size:clamp(20px, 3.2vw, 28px); }
+    header .right{ justify-content:flex-end; gap:12px }
+    .action-toggle, .len-toggle, .theme-toggle{ display:flex; gap:6px; background:var(--panel); border:1px solid var(--panel-border); padding:4px; border-radius:12px; }
+    .len-btn, .action-btn, .theme-btn{ appearance:none; border:none; padding:10px 16px; border-radius:10px; font-weight:900; font-size:16px; cursor:pointer; min-width:54px; display:flex; align-items:center; justify-content:center; background:var(--bg); color:var(--fg); transition: transform .06s ease, box-shadow .2s, background-color .2s, border-color .2s }
+    .theme-btn#th-dark{ background:#0b1220; color:#fff; }
+    .theme-btn#th-light-soft{ background:#eceff3; color:#141824; }
+    .len-btn:hover, .action-btn:hover, .theme-btn:hover{ box-shadow:0 1px 0 rgba(0,0,0,0.2) inset }
+    .len-btn:active, .action-btn:active, .theme-btn:active{ transform:translateY(1px) scale(0.98); }
+    .theme-btn[aria-pressed="true"], .len-btn[aria-pressed="true"]{ outline:2px solid #60a5fa; outline-offset:2px }
+
+    main{ flex:1; display:flex; align-items:center; justify-content:center; }
+    .board{ display:grid; grid-template-columns:repeat(var(--cols), var(--tile)); gap:var(--gap); padding:0 var(--sidepad); }
+    .tile{ width:var(--tile); height:var(--tile); display:flex; align-items:center; justify-content:center; border-radius:12px; font-weight:800; text-transform:uppercase; font-size:calc(var(--tile)*0.46); border:1px solid var(--tile-border); background:linear-gradient(180deg,var(--tile-bg-top),var(--tile-bg-bot)); color:var(--tile-text); transition:transform .2s }
+    .tile.active{ outline:2px solid #60a5fa; outline-offset:2px }
+    
+    /* COULEURS TUILES */
+    .tile.correct{ background:linear-gradient(180deg,var(--tile-correct-top),var(--tile-correct-bot)); border-color:var(--tile-correct-border); color:var(--tile-correct-text) }
+    .tile.present{ background:linear-gradient(180deg,var(--tile-present-top),var(--tile-present-bot)); border-color:var(--tile-present-border); color:var(--tile-present-text) }
+    .tile.absent{ background:var(--tile-absent-bg); border-color:var(--tile-absent-border); color:var(--tile-absent-text) }
+
+    /* CLAVIER */
+    .keyboard { position: sticky; bottom: 0; padding: 10px 6px; background: var(--panel); backdrop-filter: blur(10px); border-top: 1px solid var(--panel-border); z-index: 100; }
+    .keyboard-layout { display: flex; flex-direction: column; gap: 6px; max-width: 800px; margin: 0 auto; width: 100%; }
+    .key { 
+      flex: 1; height: clamp(42px, 6.5dvh, 58px); display: grid; place-items: center; border-radius: 6px; 
+      background: var(--key-bg); border: 1px solid var(--key-border); color: var(--key-text); 
+      font-weight: 700; font-size: clamp(14px, 2.5dvh, 20px); user-select: none; cursor: pointer; 
+      transition: all .15s ease; box-shadow: 0 2px 0 rgba(0,0,0,0.2);
+    }
+    .key:active { transform: translateY(2px); box-shadow: none; }
+    
+    /* Couleurs Touches */
+    .key.correct { background: var(--tile-correct-bot); border-color: var(--tile-correct-border); color: var(--tile-correct-text); }
+    .key.present { background: var(--tile-present-bot); border-color: var(--tile-present-border); color: var(--tile-present-text); }
+    .key.greyed { opacity: 0.5; background: var(--key-greyed-bg); border-color: var(--key-greyed-border); color: var(--key-greyed-text); transform: scale(0.95); box-shadow: none; }
+
+    /* Ligne du haut */
+    .row-top { display: flex; gap: 4px; width: 100%; }
+
+    /* Bloc du bas */
+    .lower-deck { display: flex; gap: 4px; width: 100%; }
+
+    /* Bloc Gauche (Lettres) - 86% */
+    .keys-left-block { flex: 86; display: flex; flex-direction: column; gap: 6px; }
+    
+    /* Bloc Droite (Bouton Enter) - 14% */
+    .key.enter-vertical {
+      flex: 14; height: auto; 
+      background: #2563eb; border-color: #3b82f6; color: white;
+      font-size: 28px;
+    }
+
+    /* Styles des rangées */
+    .row-standard { display: flex; gap: 4px; width: 100%; }
+    .row-standard.row-2 { justify-content: flex-end; }
+    .row-standard.row-3 { width: 78%; margin-left: auto; margin-right: 0; }
+
+    /* Touche EFFACER (Rouge) */
+    .key[data-key="⌫"] { background: #ef4444; border-color: #f87171; color: white; }
+
+    /* ========================================= */
+    .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(5px); z-index: 2000; display: flex; align-items: center; justify-content: center; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+    .modal-overlay.visible { opacity: 1; pointer-events: auto; }
+    .modal-content { background: var(--panel); border: 1px solid var(--panel-border); padding: 24px; border-radius: 20px; text-align: center; max-width: 90%; width: 320px; box-shadow: 0 20px 50px rgba(0,0,0,0.5); position: relative; transform: translateY(20px); transition: transform 0.3s ease; }
+    .modal-overlay.visible .modal-content { transform: translateY(0); }
+    h2#modal-title { margin: 0 0 10px 0; font-size: 28px; text-transform: uppercase; }
+    .modal-message { margin: 0; color: var(--tile-absent-text); font-size: 16px; }
+    .secret-word { font-size: 36px; font-weight: 900; letter-spacing: 2px; margin: 15px 0 25px 0; color: var(--tile-correct-border); text-shadow: 0 2px 10px rgba(0,0,0,0.3); }
+    .modal-actions { display: flex; flex-direction: column; gap: 10px; }
+    .modal-btn { display: block; width: 100%; padding: 12px; border-radius: 12px; border: none; font-size: 18px; font-weight: 700; cursor: pointer; text-decoration: none; color: white; transition: transform 0.1s; }
+    .modal-btn:active { transform: scale(0.96); }
+    .modal-btn.def { background: #6366f1; } 
+    .modal-btn.replay { background: var(--tile-correct-bot); }
+    .close-icon { position: absolute; top: 10px; right: 10px; background: transparent; border: none; color: var(--fg); font-size: 20px; cursor: pointer; opacity: 0.5; }
+    #toast{ position:fixed; left:50%; top:50%; transform:translate(-50%, -50%) scale(.96); background:var(--toast-bg); color:#fff; padding:14px 18px; border-radius:12px; font-size:clamp(18px, 2.4vw, 22px); font-weight:800; opacity:0; transition:opacity .2s, transform .2s; z-index:10000; pointer-events:none; box-shadow:0 10px 28px rgba(0,0,0,0.45); max-width:min(92vw, 520px); text-align:center; backdrop-filter: blur(8px); }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="left">
+        <div class="action-toggle" role="group" aria-label="Actions">
+          <button id="reset" class="action-btn" title="Nouvelle partie">＋</button>
+          <button id="reveal" class="action-btn" title="Révéler le mot">👁</button>
+          <button id="sound" class="action-btn" title="Activer/Désactiver le son" aria-pressed="true">🔊</button>
+        </div>
+      </div>
+      <div class="center">LE MOT MYSTÈRE</div>
+      <div class="right">
+        <div class="len-toggle" role="group" aria-label="Longueur du mot">
+          <button id="len5" class="len-btn" aria-pressed="false">5</button>
+          <button id="len6" class="len-btn" aria-pressed="false">6</button>
+        </div>
+        <div class="theme-toggle" role="group" aria-label="Thème">
+          <button id="th-dark" class="theme-btn" aria-pressed="false">Sombre</button>
+          <button id="th-light-soft" class="theme-btn" aria-pressed="false">Tamisé</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <div id="board" class="board" aria-label="Grille de jeu"></div>
+    </main>
+
+    <div class="keyboard" aria-label="Clavier du jeu">
+      <div class="keyboard-layout" id="kb-layout"></div>
+    </div>
+  </div>
+
+  <div id="toast" aria-live="polite"></div>
+
+  <div id="game-modal" class="modal-overlay hidden">
+    <div class="modal-content">
+      <h2 id="modal-title">DOMMAGE !</h2>
+      <p class="modal-message">Le mot secret était :</p>
+      <div id="modal-word-display" class="secret-word">MOT</div>
+      <div class="modal-actions">
+        <a id="btn-def" href="#" target="_blank" class="modal-btn def">📚 Voir la définition</a>
+        <button id="btn-replay" class="modal-btn replay">🔄 Rejouer</button>
+      </div>
+      <button id="btn-close" class="close-icon">✕</button>
+    </div>
+  </div>
+
+  <script>
+    let WORD_LENGTH=5; const MAX_ROWS=6;
+    document.documentElement.style.setProperty('--cols',String(WORD_LENGTH));
+
+    // Mots secrets de secours (fallback) strictement à 5 et 6 lettres
+    let SECRETS_5 = ['PORTE','POMME','CHIEN','TABLE','ROUTE','SALUT','MONDE','LIVRE','CELUI','AVOIR','FORCE'];
+    let SECRETS_6 = ['MAISON','CHEVAL','MANGER','PARTIR','JARDIN','ACTION','SURIRE'];
+    let VALID_SET_GLOBAL = new Set([...SECRETS_5, ...SECRETS_6]);
+    
+    // Nettoyage strict : supprime retours à la ligne (\r, \n), espaces et caractères non-AZ
+    function nettoyerMot(mot) {
+      if (!mot) return "";
+      return mot.toString().replace(/[\r\n\t]/g, "").trim().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z]/g, "");
+    }
+
+    async function chargerDictionnaire() {
+      try {
+        // 1. Charger la liste des mots secrets (mots_secrets.txt)
+        const resSecrets = await fetch('./mots_secrets.txt');
+        if (resSecrets.ok) {
+          const textSecrets = await resSecrets.text();
+          const s5 = new Set(), s6 = new Set();
+          textSecrets.split(/\r?\n/).forEach(line => {
+            let m = nettoyerMot(line);
+            if (m.length === 5) s5.add(m);
+            if (m.length === 6) s6.add(m);
+          });
+          if (s5.size > 0) {
+            SECRETS_5 = Array.from(s5);
+            SECRETS_6 = Array.from(s6);
+          }
+        }
+
+        // 2. Charger le dictionnaire complet (mots_valides.txt)
+        const resValides = await fetch('./mots_valides.txt');
+        if (resValides.ok) {
+          const textValides = await resValides.text();
+          const valides = new Set();
+          textValides.split(/\r?\n/).forEach(line => {
+            let m = nettoyerMot(line);
+            if (m.length === 5 || m.length === 6) {
+              valides.add(m);
+            }
+          });
+          if (valides.size > 0) {
+            VALID_SET_GLOBAL = valides;
+          }
+        }
+
+        // 3. SÉCURITÉ : Injecter TOUS les mots secrets dans les mots valides
+        SECRETS_5.forEach(m => VALID_SET_GLOBAL.add(m));
+        SECRETS_6.forEach(m => VALID_SET_GLOBAL.add(m));
+
+        // 4. Mettre à jour les ensembles et réinitialiser le plateau
+        SETS = getSets(WORD_LENGTH);
+        resetGame();
+        
+        console.log(`Dictionnaires chargés : ${SECRETS_5.length} mots secrets (5L), ${SECRETS_6.length} mots secrets (6L), ${VALID_SET_GLOBAL.size} mots valides.`);
+      } catch (e) { 
+        console.error("Erreur lors du chargement des dictionnaires:", e); 
+      }
+    }
+
+    const storage = {
+      get(key){ try { return window.localStorage.getItem(key); } catch(e){ return null; } },
+      set(key,val){ try { window.localStorage.setItem(key,val); } catch(e){ /* ignore */ } }
+    };
+
+    const themeBtns=document.querySelectorAll('.theme-btn');
+    const THEMES={ 'th-dark':'', 'th-light-soft':'theme-light-soft' };
+    function applyTheme(btnId){
+      document.body.classList.remove('theme-light-soft','theme-light','theme-sepia');
+      themeBtns.forEach(b=>b.setAttribute('aria-pressed','false'));
+      if(btnId && THEMES[btnId]){
+        const cls=THEMES[btnId];
+        if(cls) document.body.classList.add(cls);
+        storage.set('mm_theme',btnId);
+        document.getElementById(btnId).setAttribute('aria-pressed','true');
+      }
+    }
+    (function(){
+      const saved = storage.get('mm_theme');
+      const defaultTheme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'th-light-soft' : 'th-dark';
+      if(saved && Object.prototype.hasOwnProperty.call(THEMES, saved)){ applyTheme(saved); } 
+      else { applyTheme(defaultTheme); storage.set('mm_theme', defaultTheme); }
+    })();
+    themeBtns.forEach(btn=>btn.addEventListener('click',()=>applyTheme(btn.id)));
+
+    function getSets(len){
+      const secretPool = (len === 6) ? SECRETS_6 : SECRETS_5;
+      const validSet = new Set([...VALID_SET_GLOBAL].filter(m => m.length === len));
+      return { VALID_SET: validSet, SECRET_POOL: secretPool };
+    }
+
+    let SOUND_ON = (storage.get('mm_sound') !== 'off');
+    const soundBtn = document.getElementById('sound');
+    function updateSoundBtn(){ if(!soundBtn) return; soundBtn.setAttribute('aria-pressed', String(SOUND_ON)); soundBtn.textContent = SOUND_ON ? '🔊' : '🔇'; }
+    const snd = { flipSrc:'flip.mp3', fanfareSrc:'fanfare.mp3', vol:0.7 };
+    function play(name){
+      if(!SOUND_ON) return;
+      const src = snd[name+'Src'];
+      if(!src) return;
+      try{ const a = new Audio(src); a.volume = snd.vol; const p = a.play(); if(p && p.catch) p.catch(()=>{}); }catch(_){ }
+    }
+    if(soundBtn){ soundBtn.addEventListener('click',()=>{ SOUND_ON=!SOUND_ON; storage.set('mm_sound', SOUND_ON?'on':'off'); updateSoundBtn(); }); }
+    updateSoundBtn();
+
+    const boardEl=document.getElementById('board');
+    const kbLayoutEl=document.getElementById('kb-layout');
+    const toastEl=document.getElementById('toast');
+    let row=0,col=0,secret='';
+    let SETS=getSets(WORD_LENGTH);
+
+    function toast(msg){ 
+        if(!toastEl) return; 
+        toastEl.textContent=msg; toastEl.style.opacity='1'; toastEl.style.transform='translate(-50%, -50%) scale(1)'; 
+        clearTimeout(toast._t); 
+        toast._t=setTimeout(()=>{ toastEl.style.opacity='0'; toastEl.style.transform='translate(-50%, -50%) scale(.96)'; }, 3500); 
+    }
+    function getTile(r,c){ return boardEl.querySelector(`.tile[data-row='${r}'][data-col='${c}']`); }
+    function setActive(){ boardEl.querySelectorAll('.tile.active').forEach(t=>t.classList.remove('active')); const t=getTile(row,col); if(t) t.classList.add('active'); }
+    function currentGuess(){ let g=''; for(let c=0;c<WORD_LENGTH;c++){ g+=(getTile(row,c).textContent||'').toUpperCase(); } return g; }
+
+    function renderBoard(){
+      boardEl.innerHTML='';
+      for(let r=0;r<MAX_ROWS;r++){
+        for(let c=0;c<WORD_LENGTH;c++){
+          const d=document.createElement('div'); d.className='tile'; d.dataset.row=r; d.dataset.col=c; d.tabIndex=0;
+          d.addEventListener('click',()=>{ if(r===row){ col=c; setActive(); }});
+          boardEl.appendChild(d);
+        }
+      }
+      row=0; col=0; setActive();
+    }
+
+    function renderKeyboard(){
+      kbLayoutEl.innerHTML='';
+
+      // 1. Ligne du Haut
+      const row1Keys = ['Q','W','E','R','T','Y','U','I','O','P','⌫'];
+      const topRowDiv = document.createElement('div');
+      topRowDiv.className = 'row-top';
+      row1Keys.forEach(k => topRowDiv.appendChild(createKeyBtn(k)));
+      kbLayoutEl.appendChild(topRowDiv);
+
+      // 2. Bloc Inférieur
+      const lowerDeck = document.createElement('div');
+      lowerDeck.className = 'lower-deck';
+
+      // 2a. Bloc Gauche (Lettres Lignes 2 et 3)
+      const leftBlock = document.createElement('div');
+      leftBlock.className = 'keys-left-block';
+      
+      const row2Keys = ['A','S','D','F','G','H','J','K','L'];
+      const row3Keys = ['Z','X','C','V','B','N','M'];
+
+      // Ligne 2
+      const row2Div = document.createElement('div');
+      row2Div.className = 'row-standard row-2';
+      row2Keys.forEach(k => row2Div.appendChild(createKeyBtn(k)));
+      leftBlock.appendChild(row2Div);
+
+      // Ligne 3
+      const row3Div = document.createElement('div');
+      row3Div.className = 'row-standard row-3';
+      row3Keys.forEach(k => row3Div.appendChild(createKeyBtn(k)));
+      leftBlock.appendChild(row3Div);
+
+      lowerDeck.appendChild(leftBlock);
+
+      // 2b. Bloc Droite (ENTER vertical)
+      const enterBtn = document.createElement('button');
+      enterBtn.type = 'button';
+      enterBtn.innerHTML = '&#8629;';
+      enterBtn.dataset.key = 'ENTER';
+      enterBtn.className = 'key enter-vertical';
+      enterBtn.addEventListener('click', () => handleKey('ENTER'));
+      lowerDeck.appendChild(enterBtn);
+
+      kbLayoutEl.appendChild(lowerDeck);
+    }
+
+    function createKeyBtn(k) {
+        const b = document.createElement('button');
+        b.type = 'button';
+        b.innerHTML = (k === '⌫') ? '&#9003;' : k;
+        b.dataset.key = k;
+        b.className = 'key';
+        if(/^[A-Z]$/.test(k)) b.dataset.letter = k;
+        b.addEventListener('click', () => handleKey(k));
+        return b;
+    }
+
+    function evaluateAndColor(guess,target){
+      const res=Array(WORD_LENGTH).fill('absent');
+      const counts={}; for(const ch of target) counts[ch]=(counts[ch]||0)+1;
+      for(let i=0;i<WORD_LENGTH;i++){ if(guess[i]===target[i]){ res[i]='correct'; counts[guess[i]]--; } }
+      for(let i=0;i<WORD_LENGTH;i++){
+        if(res[i]==='correct') continue;
+        const ch=guess[i]; if(counts[ch]>0){ res[i]='present'; counts[ch]--; }
+      }
+      for(let i=0;i<WORD_LENGTH;i++){
+        const t=getTile(row,i); t.classList.remove('correct','present','absent'); t.classList.add(res[i]);
+        updateKeyColor(guess[i], res[i]);
+      }
+    }
+    function updateKeyColor(letter,state){
+      const btn=document.querySelector(`.key[data-letter='${letter}']`);
+      if(!btn) return;
+      btn.classList.remove('correct','present','greyed');
+      if(state==='correct') btn.classList.add('correct');
+      else if(state==='present') btn.classList.add('present');
+      else btn.classList.add('greyed');
+    }
+
+    const modalEl = document.getElementById('game-modal');
+    const modalTitle = document.getElementById('modal-title');
+    const modalWord = document.getElementById('modal-word-display');
+    const btnDef = document.getElementById('btn-def');
+    const btnReplay = document.getElementById('btn-replay');
+    const btnClose = document.getElementById('btn-close');
+
+    function showEndGameModal(gagne) {
+      if (gagne) {
+        modalTitle.textContent = "BRAVO ! 🎉";
+        modalTitle.style.color = "var(--tile-correct-border)";
+      } else {
+        modalTitle.textContent = "DOMMAGE...";
+        modalTitle.style.color = "#ef4444";
+      }
+      modalWord.textContent = secret;
+      btnDef.href = `https://fr.m.wiktionary.org/wiki/${secret.toLowerCase()}`;
+      setTimeout(() => { modalEl.classList.add('visible'); }, 500);
+    }
+    function closeModal() { modalEl.classList.remove('visible'); }
+    btnClose.addEventListener('click', closeModal);
+    btnReplay.addEventListener('click', () => { closeModal(); resetGame(); });
+
+    function handleKey(key){
+      if(row>=MAX_ROWS) return;
+      if(key==='⌫'){
+        const t=getTile(row,col);
+        if(t && t.textContent){ t.textContent=''; setActive(); return; }
+        if(col>0){ col--; const p=getTile(row,col); if(p) p.textContent=''; setActive(); }
+        return;
+      }
+      if(key==='ENTER'){
+        const guess=currentGuess();
+        if(guess.length!==WORD_LENGTH){ toast(`Le mot doit contenir ${WORD_LENGTH} lettres.`); return; }
+        if(!SETS.VALID_SET.has(guess)){ toast(`« ${guess} » introuvable.`); return; }
+        const tiles=[]; for(let c=0;c<WORD_LENGTH;c++) tiles.push(getTile(row,c));
+        play('flip'); 
+        tiles.forEach((tile,i)=>{
+          setTimeout(()=>{
+            tile.style.transform='scaleY(0)';
+            setTimeout(()=>{
+              tile.style.transform='scaleY(1)';
+              if(i===WORD_LENGTH-1){
+                evaluateAndColor(guess,secret);
+                if(guess===secret){ play('fanfare'); row=MAX_ROWS; showEndGameModal(true); }
+                else { row=Math.min(row+1,MAX_ROWS); col=0; setActive(); if(row===MAX_ROWS){ showEndGameModal(false); } }
+              }
+            }, 120);
+          }, i*120);
+        });
+        return;
+      }
+      if(/^[A-Z]$/.test(key)){
+        if(col<WORD_LENGTH){ const t=getTile(row,col); if(t){ t.textContent=key.toUpperCase(); if(col<WORD_LENGTH-1) col++; setActive(); } }
+      }
+    }
+
+    window.addEventListener('keydown',(e)=>{
+      if(e.key==='Enter') handleKey('ENTER');
+      else if(e.key==='Backspace') handleKey('⌫');
+      else if(/^[a-zA-Z]$/.test(e.key)) handleKey(e.key.toUpperCase());
+    });
+
+    function resetGame() {
+       secret = SETS.SECRET_POOL[Math.floor(Math.random()*SETS.SECRET_POOL.length)];
+       renderBoard();
+       const keys = document.querySelectorAll('.key');
+       keys.forEach(k => k.classList.remove('correct','present','greyed'));
+    }
+
+    document.getElementById('reset').addEventListener('click',()=>{ resetGame(); });
+    document.getElementById('reveal').addEventListener('click',()=>{ if(!secret) resetGame(); toast('Solution : '+secret); });
+
+    const len5Btn=document.getElementById('len5');
+    const len6Btn=document.getElementById('len6');
+    function updateLenButtons(){
+      len5Btn.setAttribute('aria-pressed',String(WORD_LENGTH===5));
+      len6Btn.setAttribute('aria-pressed',String(WORD_LENGTH===6));
+    }
+    function setLength(len){
+      if(len!==5&&len!==6) return;
+      WORD_LENGTH=len;
+      storage.set('mm_len',String(len));
+      document.documentElement.style.setProperty('--cols',String(len));
+      SETS=getSets(len);
+      resetGame();
+      updateLenButtons();
+      toast(`${len} lettres`);
+    }
+    len5Btn.addEventListener('click',()=>setLength(5));
+    len6Btn.addEventListener('click',()=>setLength(6));
+
+    (function boot(){
+      try{
+        renderKeyboard();
+        const savedLen=parseInt(storage.get('mm_len')||'5',10);
+        WORD_LENGTH = (savedLen===6) ? 6 : 5;
+        document.documentElement.style.setProperty('--cols',String(WORD_LENGTH));
+        updateLenButtons();
+        SETS = getSets(WORD_LENGTH);
+        resetGame();
+        chargerDictionnaire();
+      }catch(e){ console.error(e); }
+    })();
+  </script>
+</body>
+</html>
