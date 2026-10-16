@@ -10,7 +10,7 @@
       --gap: 6px;
       --sidepad: 12px;
       --tile-max: 64px;
-      --tile: clamp(42px, calc((100vw - (2 * var(--sidepad)) - (var(--cols) - 1) * var(--gap)) / var(--cols)), var(--tile-max));
+      --tile: clamp(var(--tile-min, 42px), calc((100vw - (2 * var(--sidepad)) - (var(--cols) - 1) * var(--gap)) / var(--cols)), var(--tile-max));
       
       /* --- PALETTE DE COULEURS (Vert / Rouge / Gris) --- */
       --bg: #0b1220; --fg: #ffffff; --panel: rgba(15,23,42,0.85); --panel-border: rgba(255,255,255,0.08);
@@ -134,6 +134,66 @@
     .modal-btn.replay { background: var(--tile-correct-bot); }
     .close-icon { position: absolute; top: 10px; right: 10px; background: transparent; border: none; color: var(--fg); font-size: 20px; cursor: pointer; opacity: 0.5; }
     #toast{ position:fixed; left:50%; top:50%; transform:translate(-50%, -50%) scale(.96); background:var(--toast-bg); color:#fff; padding:14px 18px; border-radius:12px; font-size:clamp(18px, 2.4vw, 22px); font-weight:800; opacity:0; transition:opacity .2s, transform .2s; z-index:10000; pointer-events:none; box-shadow:0 10px 28px rgba(0,0,0,0.45); max-width:min(92vw, 520px); text-align:center; backdrop-filter: blur(8px); }
+
+    /* Adaptation automatique aux petits écrans */
+    @media (max-width: 850px){
+      :root{ --sidepad: 8px; --gap: 5px; --tile-max: 58px; }
+      .app{ gap: 8px; padding: 8px; }
+      header{ grid-template-columns: 1fr 1fr; grid-template-areas: "title title" "actions length" "themes themes"; gap: 7px; }
+      header .center{ grid-area: title; justify-self: center; font-size: clamp(20px, 6vw, 26px); }
+      header .left{ grid-area: actions; justify-content: flex-end; }
+      header .right{ display: contents; }
+      .len-toggle{ grid-area: length; justify-self: start; }
+      .theme-toggle{ grid-area: themes; justify-self: center; }
+      .action-toggle, .len-toggle, .theme-toggle{ gap: 4px; padding: 3px; border-radius: 10px; }
+      .len-btn, .action-btn, .theme-btn{ min-width: 42px; padding: 8px 10px; border-radius: 8px; font-size: 14px; }
+      .theme-btn{ min-width: 82px; }
+      .board{ padding: 0; }
+      .tile{ border-radius: 9px; }
+      .keyboard{ padding: 7px 4px max(7px, env(safe-area-inset-bottom)); }
+      .keyboard-layout, .keys-left-block{ gap: 5px; }
+      .row-top, .lower-deck, .row-standard{ gap: 3px; }
+      .key{ height: clamp(38px, 6.2dvh, 52px); border-radius: 5px; font-size: clamp(13px, 3.8vw, 18px); }
+      .key.enter-vertical{ font-size: clamp(20px, 6vw, 28px); }
+    }
+
+    /* iPad et grands écrans tactiles : grille et touches plus généreuses */
+    @media (min-width: 851px){
+      :root{ --tile-max: 76px; --gap: 8px; }
+      .app{ gap: 16px; padding: clamp(14px, 2vw, 24px); }
+      .keyboard{ padding: 14px 12px; }
+      .key{ height: clamp(48px, 6.5dvh, 66px); }
+    }
+
+    /* iPhone SE et autres petits écrans en portrait */
+    @media (max-width: 850px) and (max-height: 700px) and (orientation: portrait){
+      :root{ --tile-min: 34px; --tile-max: 48px; --gap: 4px; }
+      .app{ min-height: 100svh; gap: 4px; padding: 5px 7px; }
+      header{ gap: 4px; }
+      header .center{ font-size: 20px; }
+      header .center .version{ margin-top: 0; font-size: 9px; }
+      .len-btn, .action-btn, .theme-btn{ padding: 5px 8px; min-width: 36px; font-size: 12px; }
+      .theme-btn{ min-width: 68px; }
+      .keyboard{ padding: 4px 3px max(4px, env(safe-area-inset-bottom)); }
+      .keyboard-layout, .keys-left-block{ gap: 3px; }
+      .key{ height: clamp(31px, 5.5dvh, 38px); font-size: 13px; }
+      .key.enter-vertical{ font-size: 20px; }
+    }
+
+    /* En paysage, préserver l'espace vertical du plateau et du clavier */
+    @media (orientation: landscape) and (max-height: 600px){
+      :root{ --tile-max: 48px; --gap: 4px; --sidepad: 6px; }
+      .app{ min-height: 100svh; gap: 5px; padding: 5px 8px; }
+      header{ gap: 5px; }
+      header .center{ font-size: clamp(17px, 3vw, 22px); }
+      header .center .version{ font-size: 10px; }
+      .len-btn, .action-btn, .theme-btn{ padding: 6px 9px; min-width: 38px; font-size: 13px; }
+      .theme-btn{ min-width: 70px; }
+      main{ min-height: 0; }
+      .keyboard{ padding: 4px 6px; }
+      .keyboard-layout, .keys-left-block{ gap: 3px; }
+      .key{ height: clamp(30px, 7dvh, 42px); font-size: clamp(12px, 3dvh, 16px); }
+    }
   </style>
 </head>
 <body>
