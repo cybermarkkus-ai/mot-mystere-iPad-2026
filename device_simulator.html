@@ -179,6 +179,7 @@
       <option value="393x852">iPhone 14/15 Pro (393×852)</option>
       <option value="430x932">iPhone 15 Pro Max (430×932)</option>
       <option value="428x926">iPhone 14/15 Plus (428×926)</option>
+      <option value="1032x1376">iPad Pro 13 pouces (1032×1376)</option>
     </select>
 
     <select id="scale">
@@ -192,10 +193,7 @@
 
     <button id="rotate">↻ Rotation</button>
 
-    <input id="url" type="text" placeholder="index_qwerty_compact.html ou index.html">
-    <button id="load" class="primary">Charger</button>
-
-    <div class="hint">Astuce : place ce fichier **dans le même dossier** que ton jeu, puis tape le nom du fichier (ex. <code>index_qwerty_compact.html</code>) et clique sur Charger.</div>
+    <div class="hint">Le jeu <code>index.html</code>, placé dans le même dossier que ce simulateur, se charge automatiquement.</div>
   </div>
 
   <div class="stage">
@@ -222,8 +220,6 @@
   const deviceSel = document.querySelector('select#device');
   const scaleSel  = document.querySelector('select#scale');
   const rotateBtn = document.getElementById('rotate');
-  const urlInput  = document.getElementById('url');
-  const loadBtn   = document.getElementById('load');
   const deviceEl  = document.querySelector('.device');
   const iframe    = document.getElementById('preview');
 
@@ -258,15 +254,6 @@
     deviceEl.style.transform = 'scale(' + scale + ')';
   }
 
-  function loadURL(){
-    const u = (urlInput.value || '').trim() || 'index_qwerty_compact.html';
-    try {
-      iframe.src = u;
-    } catch(e){
-      alert('Impossible de charger: ' + u + '\\n' + e.message);
-    }
-  }
-
   deviceSel.addEventListener('change', applySizeFromSelect);
   scaleSel.addEventListener('change', fitScale);
   rotateBtn.addEventListener('click', function(){
@@ -274,17 +261,10 @@
     applySizeFromSelect();
   });
   window.addEventListener('resize', fitScale);
-  loadBtn.addEventListener('click', loadURL);
-
-  // Auto: essayer index_qwerty_compact.html puis index.html au 1er clic si vide
-  iframe.addEventListener('error', function(){
-    // no-op (certain navigateurs ne lancent pas 'error' sur iframe)
-  });
-
   // Init
   applySizeFromSelect();
-  // Petite aide : si la page courante est dans le même dossier que ton jeu,
-  // tape juste le nom du fichier (ex: index.html) et clique sur Charger.
+  // Résout index.html relativement à l'emplacement du simulateur.
+  iframe.src = new URL('index.html', document.baseURI).href;
 })();
 </script>
 </body>
